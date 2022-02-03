@@ -98,3 +98,30 @@ def delete_parquet_store_entity(conduit_url, token, connector_name, ext_table_na
     print("The status code for deleting the parquet store entity request is:", response.status_code)
     if response.status_code == 200: print("Parquet entity was successfully deleted")
     assert response.status_code == 200, 'The parquet entity was not deleted'
+
+
+def get_metadata(conduit_url, token, connector_name):
+    headers = {"Authorization": f"Bearer {token}",
+               "Accept": "*/*"
+               }
+    response = requests.get(f"{conduit_url}/api/metadata/datasources/{connector_name}", headers=headers)
+    print(f"The status code for getting the metadata for {connector_name} is:", response.status_code)
+    if response.status_code == 200: print("The metadata was successfully acquired")
+    assert response.status_code == 200, 'The metadata was not successfully acquired'
+    if response.status_code != 200: sys.exit("The metadata was not acquired. Cannot continue")
+
+    json_response3 = response.json()
+    return json_response3
+
+def get_destination_config(conduit_url, token, defaultdestination):
+    headers = {"Authorization": f"Bearer {token}",
+               "Accept": "*/*"
+               }
+    response = requests.get(f"{conduit_url}/api/sinks/{defaultdestination}", headers=headers)
+    print(f"The status code for getting the destination configuration corresponding to id {defaultdestination} is:", response.status_code)
+    if response.status_code == 200: print(f"The destination configuration was successfully acquired. The destination is valid. The materialization job can be triggered.")
+    print ('The response is:', response.content)
+
+
+    response4 = response.status_code
+    return response4
