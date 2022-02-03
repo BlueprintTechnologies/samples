@@ -1,12 +1,13 @@
+
 import json
 import time
 import sys
 import apirequests
 
 
-conduit_user = "<Enter your Conduit account username here>"
-conduit_password = "<Enter your Conduit account password here>"
-conduit_url = "<Enter Conduit url here>"
+conduit_user = "Enter here your Conduit account user"
+conduit_password = "Enter here your Conduit account password"
+conduit_url = "Enter here your Conduit url"
 
 #authenticate & get token
 
@@ -31,37 +32,52 @@ for each_entry in response_dict:
          'starttime': each_entry['startTime'],
          'finishtime': each_entry['finishTime'],
          'autorefresh': each_entry['autoRefresh'],
-         'materialized': each_entry['materialized']
+         'materialized': each_entry['materialized'],
         })
 print("These are all the parquet store entities with their most relevant information:")
 for details in what_is_needed:
      print(details)
 
-#check if there is an unmaterialized dataset, and if there is one found, trigger a materialization job for it
+#check if there is an unmaterialized dataset with a valid destination, and if there is one found, trigger a materialization job for it
 
-#check if there is an unmaterialized dataset
+#check if there is an unmaterialized dataset with a valid destination
 
 unmaterialised = None
 for every_entry in response_dict:
-    if every_entry['materialized'] is False:
-        unmaterialised = every_entry
-        print("This is one unmaterialized dataset:", unmaterialised)
-        break
-if unmaterialised is None: sys.exit("There is no unmaterialised dataset. Cannot continue")
+        if every_entry['materialized'] is False:
+            unmaterialised = every_entry
+            print("This is one unmaterialized dataset:", unmaterialised)
+            new_unmaterialised = list(unmaterialised.items())
+            dataset_name = (new_unmaterialised[4][1])
+            connector_name = (new_unmaterialised[3][1])
+            print(f"Checking if there is a valid destination set for {dataset_name} dataset...")
+            json_response3 = apirequests.get_metadata(conduit_url, token, connector_name)
+            defaultdestination = json_response3.get('parquetDefaultSink')
+            print("The destination id is:", defaultdestination)
+            if defaultdestination is not None:
+                response4 = apirequests.get_destination_config(conduit_url, token, defaultdestination)
+                if response4 != 200:
+                    print("The destination was not successfully acquired. Another dataset needs to be chosen")
+                    unmaterialised = None
+                else:
+                    connector_type = (new_unmaterialised[2][1])
+                    ext_table_name = (new_unmaterialised[5][1])
+                    print("The connector type is:", connector_type)
+                    print("The connector name is:", connector_name)
+                    print("The dataset name is:", dataset_name)
+                    print("The extended table name is:", ext_table_name)
+                    break
 
-#trigger materialization if an unmaterialised dataset has been found
+            else:
+                print("There is no destination set for this dataset, materialization will not work. Another dataset needs to be chosen")
+                unmaterialised = None
+if unmaterialised is None:
+   sys.exit("There is no unmaterialised dataset. Cannot continue")
 
-new_unmaterialised = list(unmaterialised.items())
-connector_type = (new_unmaterialised[2][1])
-connector_name = (new_unmaterialised[3][1])
-ext_table_name = (new_unmaterialised[5][1])
-dataset_name = (new_unmaterialised[4][1])
-print("The connector type is:", connector_type)
-print("The connector name is:", connector_name)
-print("The dataset name is:", dataset_name)
-print("The extended table name is:", ext_table_name)
 
-print (f"Triggering materialization job for the unmaterialized {dataset_name} dataset...")
+# trigger materialization if an unmaterialised dataset has been found
+
+print(f"Triggering materialization job for the unmaterialized {dataset_name} dataset...")
 apirequests.trigger_materialization_job(conduit_url, token, connector_name, ext_table_name)
 
 time.sleep(10)
